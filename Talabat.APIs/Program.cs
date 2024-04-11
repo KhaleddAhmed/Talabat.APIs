@@ -7,8 +7,9 @@ namespace Talabat.APIs
 	public class Program
 	{
 		//Entry Point
-		public static void Main(string[] args)
+		public static async Task Main(string[] args)
 		{
+
 			var webApplicationbuilder = WebApplication.CreateBuilder(args);
 
 			#region Configure Services
@@ -28,6 +29,27 @@ namespace Talabat.APIs
 
 			var app = webApplicationbuilder.Build();
 
+			using var Scope = app.Services.CreateScope();
+			 var Services=Scope.ServiceProvider;
+			var _dbContext=Services.GetRequiredService<StoreContext>();
+			//Ask CLR for creating object from DbContext Explicitly
+
+			//Ask CLR  for creating object to log if there is a problem in updating
+			var loggerFactory=Services.GetRequiredService<ILoggerFactory>();
+			try
+			{
+				await _dbContext.Database.MigrateAsync(); //Update-Database
+			}
+			catch (Exception ex) 
+			{
+                Console.WriteLine(ex);
+
+				var logger=loggerFactory.CreateLogger<Program>();
+				logger.LogError(ex, "An Error Has been occured while applying Migration");
+
+            }
+			
+
 			#region Configure Kestrel MiddleWares
 			// Configure the HTTP request pipeline.
 			if (app.Environment.IsDevelopment())
@@ -43,6 +65,9 @@ namespace Talabat.APIs
 
 			app.MapControllers(); 
 			#endregion
+
+
+
 
 			app.Run();
 		}
