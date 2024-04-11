@@ -28,6 +28,8 @@ namespace Talabat.Infrastructure
 
 		public async Task<T?> GetAsync(int id)
 		{
+			if(typeof(T) == typeof(Product))
+				return  await _dbContext.Set<Product>().Where(P=>P.Id == id).Include(P=>P.Brand).Include(P=>P.Cateogry).FirstOrDefaultAsync() as T;
 			return await _dbContext.Set<T>().FindAsync(id);
 		}
 	}
