@@ -17,6 +17,7 @@ namespace Talabat.Core.Specifications
         {
             //critirea=null;
 
+
             
         }
 
