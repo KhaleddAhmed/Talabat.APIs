@@ -22,7 +22,7 @@ namespace Talabat.Infrastructure
 			//1. P=>P.Brand
 			//2.P=>P.Category
 
-			spec.Includes.Aggregate(query,(currentQuery,includeExpression)=>currentQuery.Include(includeExpression));
+			query=spec.Includes.Aggregate(query,(currentQuery,includeExpression)=>currentQuery.Include(includeExpression));
 			//_dbcontext.Set<TEntity>().where(E=>E.id==1).Include(P=>P.Brand);
 			//_dbcontext.Set<TEntity>().where(E=>E.id==1).Include(P=>P.Brand).Include(P=>P.category);
 

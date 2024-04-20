@@ -43,7 +43,7 @@ namespace Talabat.Infrastructure
 
 		public async Task<T?> GetWithSpec(ISpecifications<T> spec)
 		{
-			return await ApplySpecictaions(spec).AsNoTracking().FirstOrDefaultAsync();
+			return await ApplySpecictaions(spec).FirstOrDefaultAsync();
 		}
 
 
