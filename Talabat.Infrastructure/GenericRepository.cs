@@ -20,7 +20,7 @@ namespace Talabat.Infrastructure
 			_dbContext = dbContext;
 		}
 
-		public async Task<IEnumerable<T>> GetAllAsync()
+		public async Task<IReadOnlyList<T>> GetAllAsync()
 		{
 			//if (typeof(T) == typeof(Product))
 			//	return (IEnumerable<T>) await _dbContext.Set<Product>().AsNoTracking().Include(P => P.Brand).Include(P => P.Cateogry).ToListAsync();
@@ -35,7 +35,7 @@ namespace Talabat.Infrastructure
 		}
 
 
-		public async Task<IEnumerable<T>> GetAllWithSpec(ISpecifications<T> spec)
+		public async Task<IReadOnlyList<T>> GetAllWithSpec(ISpecifications<T> spec)
 		{
 			return await ApplySpecictaions(spec).AsNoTracking().ToListAsync();
 		}
