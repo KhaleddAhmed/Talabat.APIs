@@ -17,6 +17,14 @@ namespace Talabat.Infrastructure
 
 			if(spec.Critieria is not null)
 				query=query.Where(spec.Critieria);
+
+			if(spec.OrderBy is not null)
+				query=query.OrderBy(spec.OrderBy);
+
+			else if(spec.OrderByDesc is not null)
+				query=query.OrderByDescending(spec.OrderByDesc);
+
+
 			//_dbcontext.Set<TEntity>().where(E=>E.id==1);
 			//include Expressions
 			//1. P=>P.Brand

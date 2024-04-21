@@ -14,6 +14,12 @@ namespace Talabat.Core.Specifications
 
         public List<Expression<Func<T,object>>> Includes { get; set; }
 
+        public Expression<Func<T,object>> OrderBy { get; set; }
+		public Expression<Func<T, object>> OrderByDesc { get; set; }
 
-    }
+
+
+
+
+	}
 }

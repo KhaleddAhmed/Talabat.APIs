@@ -23,7 +23,7 @@ namespace Talabat.Infrastructure
 		public async Task<IReadOnlyList<T>> GetAllAsync()
 		{
 			//if (typeof(T) == typeof(Product))
-			//	return (IEnumerable<T>) await _dbContext.Set<Product>().AsNoTracking().Include(P => P.Brand).Include(P => P.Cateogry).ToListAsync();
+			//	return (IEnumerable<T>) await _dbContext.Set<Product>().orderBy(P=>P.Name).AsNoTracking().Include(P => P.Brand).Include(P => P.Cateogry).ToListAsync();
 			return await  _dbContext.Set<T>().AsNoTracking().ToListAsync();
 		}
 
