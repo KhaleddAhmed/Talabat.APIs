@@ -1,5 +1,13 @@
 
+using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Net;
+using System.Text.Json;
+using Talabat.APIs.Errors;
+using Talabat.APIs.Extensions;
+using Talabat.APIs.Helpers;
+using Talabat.APIs.Middlewares;
 using Talabat.Core.Entities;
 using Talabat.Core.Repositories.Contract;
 using Talabat.Infrastructure;
@@ -20,8 +28,8 @@ namespace Talabat.APIs
 
 			webApplicationbuilder.Services.AddControllers();
 			// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-			webApplicationbuilder.Services.AddEndpointsApiExplorer();
-			webApplicationbuilder.Services.AddSwaggerGen();
+
+			webApplicationbuilder.Services.AddSwaggerServices();
 
 			webApplicationbuilder.Services.AddDbContext<StoreContext>(options =>
 			{
@@ -32,7 +40,8 @@ namespace Talabat.APIs
 			///webApplicationbuilder.Services.AddScoped<IGenericRepository<ProductBrand>, GenericRepository<ProductBrand>>();
 			///webApplicationbuilder.Services.AddScoped<IGenericRepository<ProductCategory>, GenericRepository<ProductCategory>>();
 
-			webApplicationbuilder.Services.AddScoped(typeof(IGenericRepository<>),typeof(GenericRepository<>));
+			//ApplicationServicesExtension.AddApplicationServices(webApplicationbuilder.Services);
+			webApplicationbuilder.Services.AddApplicationServices();
 
 
 			#endregion
@@ -46,6 +55,8 @@ namespace Talabat.APIs
 
 			//Ask CLR  for creating object to log if there is a problem in updating
 			var loggerFactory=Services.GetRequiredService<ILoggerFactory>();
+			var logger = loggerFactory.CreateLogger<Program>();
+
 			try
 			{
 				await _dbContext.Database.MigrateAsync(); //Update-Database
@@ -56,24 +67,58 @@ namespace Talabat.APIs
 			{
                 Console.WriteLine(ex);
 
-				var logger=loggerFactory.CreateLogger<Program>();
 				logger.LogError(ex, "An Error Has been occured while applying Migration");
 
             }
-			
+
 
 			#region Configure Kestrel MiddleWares
+
+
 			// Configure the HTTP request pipeline.
+			//app.UseMiddleware<ExceptionMiddleware>();
+
+			app.Use(async (httpcontext, _next) =>
+			{
+				try
+				{
+					//take an action with request
+					await _next.Invoke(httpcontext); //Go To Next Middleware
+
+					//take action with response
+				}
+				catch (Exception ex)
+				{
+
+					logger.LogError(ex.Message); //Development
+
+					//log exception In Database or file in production Env
+
+					httpcontext.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+					httpcontext.Response.ContentType = "application/json";
+
+					var response = app.Environment.IsDevelopment() ? new ApiExceptionResponse((int)HttpStatusCode.InternalServerError, ex.Message, ex.StackTrace.ToString())
+						: new ApiExceptionResponse((int)HttpStatusCode.InternalServerError);
+
+					var options = new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+					var json = JsonSerializer.Serialize(response, options);
+
+					await httpcontext.Response.WriteAsync(json);
+
+				}
+			});
 			if (app.Environment.IsDevelopment())
 			{
-				app.UseSwagger();
-				app.UseSwaggerUI();
+				app.UseSwaggerMiddlewares();
+
 			}
+
+			app.UseStatusCodePagesWithReExecute("/Errors/{0}");
 
 			app.UseHttpsRedirection();
 
 
-
+			app.UseStaticFiles();
 
 			app.MapControllers(); 
 			#endregion
