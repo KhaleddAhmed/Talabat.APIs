@@ -8,18 +8,18 @@ namespace Talabat.APIs.Middlewares
 	//By CONVENTION
 	public class ExceptionMiddleware
 	{
-		private readonly RequestDelegate _next;
+		//private readonly RequestDelegate _next;
 		private readonly Microsoft.Extensions.Logging.ILogger<ExceptionMiddleware> _logger;
 		private readonly IWebHostEnvironment _env;
 
-		public ExceptionMiddleware(RequestDelegate next,ILogger<ExceptionMiddleware> logger,IWebHostEnvironment env)
+		public ExceptionMiddleware(ILogger<ExceptionMiddleware> logger,IWebHostEnvironment env)
         {
-			_next = next;
+			//_next = next;
 			_logger = logger;
 			_env = env;
 		}
 
-        public async Task InvokeAsync(HttpContext context)
+        public async Task InvokeAsync(HttpContext context,RequestDelegate _next)
 		{
 			try
 			{

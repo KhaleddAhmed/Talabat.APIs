@@ -2,6 +2,8 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Net;
+using System.Text.Json;
 using Talabat.APIs.Errors;
 using Talabat.APIs.Helpers;
 using Talabat.APIs.Middlewares;
@@ -72,6 +74,8 @@ namespace Talabat.APIs
 
 			//Ask CLR  for creating object to log if there is a problem in updating
 			var loggerFactory=Services.GetRequiredService<ILoggerFactory>();
+			var logger = loggerFactory.CreateLogger<Program>();
+
 			try
 			{
 				await _dbContext.Database.MigrateAsync(); //Update-Database
@@ -82,7 +86,6 @@ namespace Talabat.APIs
 			{
                 Console.WriteLine(ex);
 
-				var logger=loggerFactory.CreateLogger<Program>();
 				logger.LogError(ex, "An Error Has been occured while applying Migration");
 
             }
@@ -90,8 +93,39 @@ namespace Talabat.APIs
 
 			#region Configure Kestrel MiddleWares
 
-			app.UseMiddleware<ExceptionMiddleware>();
+
 			// Configure the HTTP request pipeline.
+			//app.UseMiddleware<ExceptionMiddleware>();
+
+			app.Use(async (httpcontext, _next) =>
+			{
+				try
+				{
+					//take an action with request
+					await _next.Invoke(httpcontext); //Go To Next Middleware
+
+					//take action with response
+				}
+				catch (Exception ex)
+				{
+
+					logger.LogError(ex.Message); //Development
+
+					//log exception In Database or file in production Env
+
+					httpcontext.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+					httpcontext.Response.ContentType = "application/json";
+
+					var response = app.Environment.IsDevelopment() ? new ApiExceptionResponse((int)HttpStatusCode.InternalServerError, ex.Message, ex.StackTrace.ToString())
+						: new ApiExceptionResponse((int)HttpStatusCode.InternalServerError);
+
+					var options = new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+					var json = JsonSerializer.Serialize(response, options);
+
+					await httpcontext.Response.WriteAsync(json);
+
+				}
+			});
 			if (app.Environment.IsDevelopment())
 			{
 				app.UseSwagger();
