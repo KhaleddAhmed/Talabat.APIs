@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Net;
 using System.Text.Json;
 using Talabat.APIs.Errors;
+using Talabat.APIs.Extensions;
 using Talabat.APIs.Helpers;
 using Talabat.APIs.Middlewares;
 using Talabat.Core.Entities;
@@ -27,8 +28,8 @@ namespace Talabat.APIs
 
 			webApplicationbuilder.Services.AddControllers();
 			// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-			webApplicationbuilder.Services.AddEndpointsApiExplorer();
-			webApplicationbuilder.Services.AddSwaggerGen();
+
+			webApplicationbuilder.Services.AddSwaggerServices();
 
 			webApplicationbuilder.Services.AddDbContext<StoreContext>(options =>
 			{
@@ -39,28 +40,8 @@ namespace Talabat.APIs
 			///webApplicationbuilder.Services.AddScoped<IGenericRepository<ProductBrand>, GenericRepository<ProductBrand>>();
 			///webApplicationbuilder.Services.AddScoped<IGenericRepository<ProductCategory>, GenericRepository<ProductCategory>>();
 
-			webApplicationbuilder.Services.AddScoped(typeof(IGenericRepository<>),typeof(GenericRepository<>));
-			//webApplicationbuilder.Services.AddAutoMapper(M => M.AddProfile(new MappingProfiles()));
-			webApplicationbuilder.Services.AddAutoMapper(typeof(MappingProfiles));
-
-			webApplicationbuilder.Services.Configure<ApiBehaviorOptions>(options =>
-			{
-				options.InvalidModelStateResponseFactory = (actionContext) =>
-				{
-					var errors = actionContext.ModelState.Where(P => P.Value.Errors.Count() > 0)
-					.SelectMany(P => P.Value.Errors)
-					.Select(E => E.ErrorMessage)
-					.ToArray();
-					var response = new ApiValidationErrorResponse()
-					{
-						Errors = errors
-					};
-
-					return new BadRequestObjectResult(response);
-				};
-				
-			});
-
+			//ApplicationServicesExtension.AddApplicationServices(webApplicationbuilder.Services);
+			webApplicationbuilder.Services.AddApplicationServices();
 
 
 			#endregion
@@ -128,8 +109,8 @@ namespace Talabat.APIs
 			});
 			if (app.Environment.IsDevelopment())
 			{
-				app.UseSwagger();
-				app.UseSwaggerUI();
+				app.UseSwaggerMiddlewares();
+
 			}
 
 			app.UseStatusCodePagesWithReExecute("/Errors/{0}");
