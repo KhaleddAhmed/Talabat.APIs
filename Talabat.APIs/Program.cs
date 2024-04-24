@@ -1,4 +1,5 @@
 
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -41,6 +42,12 @@ namespace Talabat.APIs
 			///webApplicationbuilder.Services.AddScoped<IGenericRepository<ProductCategory>, GenericRepository<ProductCategory>>();
 
 			//ApplicationServicesExtension.AddApplicationServices(webApplicationbuilder.Services);
+			webApplicationbuilder.Services.AddSingleton<IConnectionMultiplexer>((serviceProvider) =>
+			{
+				var connection = webApplicationBuilder.Configuration.GetConnectionString("Redis");
+				return ConnectionMultiplexer.Connect(connection);
+			}
+);
 			webApplicationbuilder.Services.AddApplicationServices();
 
 

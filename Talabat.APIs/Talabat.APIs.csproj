@@ -19,5 +19,8 @@
   <ItemGroup>
     <ProjectReference Include="..\Talabat.Infrastructure\Talabat.Infrastructure.csproj" />
   </ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="StackExchange.Redis" Version="2.7.33" />
+	</ItemGroup>
 
 </Project>
