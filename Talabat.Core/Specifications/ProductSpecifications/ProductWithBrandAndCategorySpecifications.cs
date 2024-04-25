@@ -10,19 +10,19 @@ namespace Talabat.Core.Specifications.ProductSpecifications
 {
 	public class ProductWithBrandAndCategorySpecifications:BaseSpecifications<Product>
 	{
-        public ProductWithBrandAndCategorySpecifications(ProductSpecParams specParams):base(P=>
+        public ProductWithBrandAndCategorySpecifications(string sort,int?brandId,int? categoryId):base(P=>
 		
-		                (!specParams.BrandId.HasValue||P.BrandId==specParams.BrandId.Value)&&
-		                 (!specParams.CategoryId.HasValue || P.CategoryId == specParams.CategoryId.Value)
+		                (!brandId.HasValue||P.BrandId==brandId)&&
+		                 (!categoryId.HasValue||P.CategoryId==categoryId)
 		
 		
 		)
 		{
 			AddIncludes();
 
-			if (!string.IsNullOrEmpty(specParams.Sort))
+			if (!string.IsNullOrEmpty(sort))
 			{
-				switch (specParams.Sort)
+				switch (sort)
 				{
 					case "priceAsc":
 						AddOrderBy(P => P.Price);
