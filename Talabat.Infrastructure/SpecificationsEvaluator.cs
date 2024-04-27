@@ -25,6 +25,10 @@ namespace Talabat.Infrastructure
 				query=query.OrderByDescending(spec.OrderByDesc);
 
 
+			if(spec.IsPaginationEnabled)
+				query=query.Skip(spec.Skip).Take(spec.Take);
+
+
 			//_dbcontext.Set<TEntity>().where(E=>E.id==1);
 			//include Expressions
 			//1. P=>P.Brand
