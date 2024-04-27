@@ -9,7 +9,7 @@ namespace Talabat.Core.Specifications.ProductSpecifications
 	public class ProductSpecParams
 	{
 		private const int MaxPageSize = 10;
-		private int pageSize;
+		private int pageSize=5;
 
 		public int PageSize
 		{
@@ -23,5 +23,14 @@ namespace Talabat.Core.Specifications.ProductSpecifications
 
         public int? BrandId { get; set; }
         public int? CategoryId { get; set; }
-    }
+
+		private string? search;
+
+		public string? Search
+		{
+			get { return search; }
+			set { search = value?.ToLower(); }
+		}
+
+	}
 }
