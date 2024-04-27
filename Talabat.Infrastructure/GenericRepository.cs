@@ -47,6 +47,12 @@ namespace Talabat.Infrastructure
 		}
 
 
+
+		public async Task<int> GetCountAsync(ISpecifications<T> spec)
+		{
+			return await ApplySpecictaions(spec).CountAsync();
+		}
+
 		private IQueryable<T> ApplySpecictaions(ISpecifications<T> spec)
 		{
 			return SpecificationsEvaluator<T>.GetQuery(_dbContext.Set<T>(), spec);
