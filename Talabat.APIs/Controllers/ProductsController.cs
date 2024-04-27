@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Talabat.APIs.DTOs;
 using Talabat.APIs.Errors;
+using Talabat.APIs.Helpers;
 using Talabat.Core.Entities;
 using Talabat.Core.Repositories.Contract;
 using Talabat.Core.Specifications;
@@ -15,21 +16,29 @@ namespace Talabat.APIs.Controllers
 	{
 		private readonly IGenericRepository<Product> _productRepo;
 		private readonly IMapper _mapper;
+		private readonly IGenericRepository<ProductBrand> _brandRepo;
+		private readonly IGenericRepository<ProductCategory> _categoryRepo;
 
-		public ProductsController(IGenericRepository<Product> productRepo,IMapper mapper)
+		public ProductsController(IGenericRepository<Product> productRepo,IMapper mapper,IGenericRepository<ProductBrand> brandRepo,IGenericRepository<ProductCategory> categoryRepo)
         {
 			_productRepo = productRepo;
 			_mapper = mapper;
+		    _brandRepo = brandRepo;
+			_categoryRepo = categoryRepo;
 		}
 
 		// /api/Products
 		[HttpGet]
-		public async Task<ActionResult<IEnumerable<ProductToReturnDto>>> GetProducts()
+		public async Task<ActionResult<Pagination <ProductToReturnDto>>> GetProducts([FromQuery] ProductSpecParams specParams)
 		{
-			var spec = new ProductWithBrandAndCategorySpecifications();
+			var spec = new ProductWithBrandAndCategorySpecifications(specParams);
 			var products = await _productRepo.GetAllWithSpec(spec);
 
-			return Ok(_mapper.Map<IEnumerable<Product>,IEnumerable<ProductToReturnDto>>(products));
+			var data=_mapper.Map<IReadOnlyList<Product>,IReadOnlyList<ProductToReturnDto>>(products);
+			var countSpec = new ProductsWithFilterationForCount(specParams);
+			var count=await _productRepo.GetCountAsync(countSpec);
+
+			return Ok(new Pagination<ProductToReturnDto>(specParams.PageIndex,specParams.PageSize,data, count));
 		}
 
 		// /api/Products/1
@@ -44,8 +53,22 @@ namespace Talabat.APIs.Controllers
 			   return NotFound(new ApiResponse(404));//404
 
 			return Ok(_mapper.Map<Product,ProductToReturnDto>(product));//200
+		}
 
-			
+
+		[HttpGet("brands")]
+		public async Task<ActionResult<IReadOnlyList<ProductBrand>>> GetBrands()
+		{
+			var brands=await _brandRepo.GetAllAsync();
+			return Ok(brands);
+		}
+
+
+		[HttpGet("categories")]
+		public async Task<ActionResult<IReadOnlyList<ProductCategory>>> GetCategories()
+		{
+			var categories=await _categoryRepo.GetAllAsync();
+			return Ok(categories);
 		}
 
     }

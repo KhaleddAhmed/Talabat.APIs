@@ -20,10 +20,10 @@ namespace Talabat.Infrastructure
 			_dbContext = dbContext;
 		}
 
-		public async Task<IEnumerable<T>> GetAllAsync()
+		public async Task<IReadOnlyList<T>> GetAllAsync()
 		{
 			//if (typeof(T) == typeof(Product))
-			//	return (IEnumerable<T>) await _dbContext.Set<Product>().AsNoTracking().Include(P => P.Brand).Include(P => P.Cateogry).ToListAsync();
+			//	return (IEnumerable<T>) await _dbContext.Set<Product>().orderBy(P=>P.Name).AsNoTracking().Include(P => P.Brand).Include(P => P.Cateogry).ToListAsync();
 			return await  _dbContext.Set<T>().AsNoTracking().ToListAsync();
 		}
 
@@ -35,7 +35,7 @@ namespace Talabat.Infrastructure
 		}
 
 
-		public async Task<IEnumerable<T>> GetAllWithSpec(ISpecifications<T> spec)
+		public async Task<IReadOnlyList<T>> GetAllWithSpec(ISpecifications<T> spec)
 		{
 			return await ApplySpecictaions(spec).AsNoTracking().ToListAsync();
 		}
@@ -46,6 +46,12 @@ namespace Talabat.Infrastructure
 			return await ApplySpecictaions(spec).FirstOrDefaultAsync();
 		}
 
+
+
+		public async Task<int> GetCountAsync(ISpecifications<T> spec)
+		{
+			return await ApplySpecictaions(spec).CountAsync();
+		}
 
 		private IQueryable<T> ApplySpecictaions(ISpecifications<T> spec)
 		{
