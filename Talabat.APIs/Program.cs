@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using StackExchange.Redis;
 using System.Net;
 using System.Text.Json;
 using Talabat.APIs.Errors;
@@ -42,6 +43,12 @@ namespace Talabat.APIs
 
 			//ApplicationServicesExtension.AddApplicationServices(webApplicationbuilder.Services);
 			webApplicationbuilder.Services.AddApplicationServices();
+
+			webApplicationbuilder.Services.AddSingleton<IConnectionMultiplexer>((serviceProvidee) =>
+			{
+				var connection = webApplicationbuilder.Configuration.GetConnectionString("Redis");
+				return ConnectionMultiplexer.Connect(connection);
+			});
 
 
 			#endregion
