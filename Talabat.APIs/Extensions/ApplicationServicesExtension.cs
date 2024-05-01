@@ -33,6 +33,8 @@ namespace Talabat.APIs.Extensions
 
 			});
 
+			Services.AddScoped(typeof(IBasketRepository),typeof(BasketRepository));
+
 			return Services;
 
 		}
