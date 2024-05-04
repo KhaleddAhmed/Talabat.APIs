@@ -3,11 +3,12 @@ using Microsoft.AspNetCore.Mvc;
 using Talabat.APIs.Errors;
 using Talabat.APIs.Helpers;
 using Talabat.Core.Repositories.Contract;
-using Talabat.Infrastructure;
+using Talabat.Infrastructure.BasketRepository;
+using Talabat.Infrastructure.GenericRepository;
 
 namespace Talabat.APIs.Extensions
 {
-	public static class ApplicationServicesExtension
+    public static class ApplicationServicesExtension
 	{
 		public static IServiceCollection AddApplicationServices(this IServiceCollection Services)
 		{
@@ -34,6 +35,8 @@ namespace Talabat.APIs.Extensions
 			});
 
 			Services.AddScoped(typeof(IBasketRepository),typeof(BasketRepository));
+
+			
 
 			return Services;
 

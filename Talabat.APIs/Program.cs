@@ -12,6 +12,7 @@ using Talabat.APIs.Middlewares;
 using Talabat.Core.Entities;
 using Talabat.Core.Repositories.Contract;
 using Talabat.Infrastructure;
+using Talabat.Infrastructure._Identity;
 using Talabat.Infrastructure.Data;
 
 namespace Talabat.APIs
@@ -37,10 +38,11 @@ namespace Talabat.APIs
 				options.UseSqlServer(webApplicationbuilder.Configuration.GetConnectionString("DefaultConnection"));
 
 			});
-			///webApplicationbuilder.Services.AddScoped<IGenericRepository<Product>,GenericRepository<Product>>();
-			///webApplicationbuilder.Services.AddScoped<IGenericRepository<ProductBrand>, GenericRepository<ProductBrand>>();
-			///webApplicationbuilder.Services.AddScoped<IGenericRepository<ProductCategory>, GenericRepository<ProductCategory>>();
 
+			webApplicationbuilder.Services.AddDbContext<ApplicationIdentityDbContext>(options =>
+			{
+				options.UseSqlServer(webApplicationbuilder.Configuration.GetConnectionString("IdentityConnection"));
+			});
 			//ApplicationServicesExtension.AddApplicationServices(webApplicationbuilder.Services);
 			webApplicationbuilder.Services.AddApplicationServices();
 
@@ -55,28 +57,33 @@ namespace Talabat.APIs
 
 			var app = webApplicationbuilder.Build();
 
+			#region Updata Database and DataSeeding
 			using var Scope = app.Services.CreateScope();
-			 var Services=Scope.ServiceProvider;
-			var _dbContext=Services.GetRequiredService<StoreContext>();
+			var Services = Scope.ServiceProvider;
+			var _dbContext = Services.GetRequiredService<StoreContext>();
+			var _identitydbContext = Services.GetRequiredService<ApplicationIdentityDbContext>();
 			//Ask CLR for creating object from DbContext Explicitly
 
 			//Ask CLR  for creating object to log if there is a problem in updating
-			var loggerFactory=Services.GetRequiredService<ILoggerFactory>();
+			var loggerFactory = Services.GetRequiredService<ILoggerFactory>();
 			var logger = loggerFactory.CreateLogger<Program>();
 
 			try
 			{
 				await _dbContext.Database.MigrateAsync(); //Update-Database
-
 				await StoreContextSeed.SeedAsync(_dbContext);
+
+				await _identitydbContext.Database.MigrateAsync();//Update-Database
+
 			}
-			catch (Exception ex) 
+			catch (Exception ex)
 			{
-                Console.WriteLine(ex);
+				Console.WriteLine(ex);
 
 				logger.LogError(ex, "An Error Has been occured while applying Migration");
 
-            }
+			} 
+			#endregion
 
 
 			#region Configure Kestrel MiddleWares
