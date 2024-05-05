@@ -1,5 +1,8 @@
-﻿using Microsoft.AspNetCore.Builder;
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 using Talabat.APIs.Errors;
 using Talabat.APIs.Helpers;
 using Talabat.Core.Repositories.Contract;
@@ -38,8 +41,34 @@ namespace Talabat.APIs.Extensions
 
 			
 
+
 			return Services;
 
+		}
+
+		public static IServiceCollection  AddAuthServices(this IServiceCollection Services,IConfiguration configuration)
+		{
+			Services.AddAuthentication(/*JwtBearerDefaults.AuthenticationScheme*/ options =>
+			{
+				options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+				options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+			})
+	.AddJwtBearer(options =>
+	{
+		options.TokenValidationParameters = new TokenValidationParameters()
+		{
+			ValidateIssuer = true,
+			ValidIssuer = configuration["JWT:ValidIssuer"],
+			ValidateAudience = true,
+			ValidAudience = configuration["JWT:ValidAudience"],
+			ValidateIssuerSigningKey = true,
+			IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["JWT:AuthKey"])),
+			ValidateLifetime = true,
+			ClockSkew = TimeSpan.Zero,
+
+		};
+	});
+			return Services;
 		}
 	}
 }
