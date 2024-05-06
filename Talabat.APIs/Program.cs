@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Newtonsoft.Json;
 using StackExchange.Redis;
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
@@ -36,7 +37,10 @@ namespace Talabat.APIs
 			#region Configure Services
 			// Add services to DI the container.
 
-			webApplicationbuilder.Services.AddControllers();
+			webApplicationbuilder.Services.AddControllers().AddNewtonsoftJson(options=>
+			{
+               options.SerializerSettings.ReferenceLoopHandling=ReferenceLoopHandling.Ignore;
+			});
 			// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 
 			webApplicationbuilder.Services.AddSwaggerServices();
@@ -132,7 +136,7 @@ namespace Talabat.APIs
 						: new ApiExceptionResponse((int)HttpStatusCode.InternalServerError);
 
 					var options = new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
-					var json = JsonSerializer.Serialize(response, options);
+					var json = System.Text.Json.JsonSerializer.Serialize(response, options);
 
 					await httpcontext.Response.WriteAsync(json);
 
