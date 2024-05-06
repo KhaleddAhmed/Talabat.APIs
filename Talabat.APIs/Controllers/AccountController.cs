@@ -1,6 +1,8 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 using Talabat.APIs.DTOs;
 using Talabat.APIs.Errors;
 using Talabat.Core.Entities.Identity;
@@ -16,11 +18,11 @@ namespace Talabat.APIs.Controllers
 		private readonly IAuthService _authService;
 
 		public AccountController(
-            UserManager<ApplicationUser> userManager,
-			SignInManager<ApplicationUser>signInManager,
+			UserManager<ApplicationUser> userManager,
+			SignInManager<ApplicationUser> signInManager,
 			IAuthService authService
-            )
-        {
+			)
+		{
 			_userManager = userManager;
 			_signInManager = signInManager;
 			_authService = authService;
@@ -30,16 +32,16 @@ namespace Talabat.APIs.Controllers
 		[HttpPost("login")]
 		public async Task<ActionResult<UserDto>> Login(LoginDto model)
 		{
-			var user=await _userManager.FindByEmailAsync(model.Email);
+			var user = await _userManager.FindByEmailAsync(model.Email);
 
-			if (user is null) 
-				return Unauthorized(new ApiResponse(401,"Invalid login"));
+			if (user is null)
+				return Unauthorized(new ApiResponse(401, "Invalid login"));
 
 
-			var result =await  _signInManager.CheckPasswordSignInAsync(user, model.Password, false);
+			var result = await _signInManager.CheckPasswordSignInAsync(user, model.Password, false);
 
-			if(!result.Succeeded)
-				return Unauthorized(new ApiResponse(401,"Invalid Login"));
+			if (!result.Succeeded)
+				return Unauthorized(new ApiResponse(401, "Invalid Login"));
 
 			return Ok(new UserDto()
 			{
@@ -65,19 +67,34 @@ namespace Talabat.APIs.Controllers
 
 			};
 
-			var result=await _userManager.CreateAsync(user,model.Password);
+			var result = await _userManager.CreateAsync(user, model.Password);
 
-			if(!result.Succeeded)
-				return BadRequest(new ApiValidationErrorResponse() { Errors=result.Errors.Select(E=>E.Description)});
+			if (!result.Succeeded)
+				return BadRequest(new ApiValidationErrorResponse() { Errors = result.Errors.Select(E => E.Description) });
 
 			return Ok(new UserDto()
 			{
 				DisplayName = user.DisplayName,
 				Email = user.Email,
-				Token =await  _authService.CreateTokenAsync(user,_userManager)
+				Token = await _authService.CreateTokenAsync(user, _userManager)
 
 			});
 		}
-    }
 
+		[Authorize]
+		[HttpGet]
+		public async Task<ActionResult<UserDto>> GetCurrentUser()
+		{
+			var email = User.FindFirstValue(ClaimTypes.Email) ?? string.Empty;
+			var user = await _userManager.FindByEmailAsync(email);
+
+			return Ok(new UserDto()
+			{
+				DisplayName = user.DisplayName,
+				Email = user.Email,
+				Token = await _authService.CreateTokenAsync(user, _userManager)
+			});
+		}
+
+	}
 }
