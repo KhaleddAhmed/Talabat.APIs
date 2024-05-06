@@ -1,18 +1,28 @@
 
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Newtonsoft.Json;
 using StackExchange.Redis;
+using System.IdentityModel.Tokens.Jwt;
 using System.Net;
+using System.Text;
 using System.Text.Json;
 using Talabat.APIs.Errors;
 using Talabat.APIs.Extensions;
 using Talabat.APIs.Helpers;
 using Talabat.APIs.Middlewares;
 using Talabat.Core.Entities;
+using Talabat.Core.Entities.Identity;
 using Talabat.Core.Repositories.Contract;
+using Talabat.Core.Services.Contract;
 using Talabat.Infrastructure;
+using Talabat.Infrastructure._Identity;
 using Talabat.Infrastructure.Data;
+using Talabat.Service.AuthService;
 
 namespace Talabat.APIs
 {
@@ -27,7 +37,10 @@ namespace Talabat.APIs
 			#region Configure Services
 			// Add services to DI the container.
 
-			webApplicationbuilder.Services.AddControllers();
+			webApplicationbuilder.Services.AddControllers().AddNewtonsoftJson(options=>
+			{
+               options.SerializerSettings.ReferenceLoopHandling=ReferenceLoopHandling.Ignore;
+			});
 			// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 
 			webApplicationbuilder.Services.AddSwaggerServices();
@@ -37,10 +50,11 @@ namespace Talabat.APIs
 				options.UseSqlServer(webApplicationbuilder.Configuration.GetConnectionString("DefaultConnection"));
 
 			});
-			///webApplicationbuilder.Services.AddScoped<IGenericRepository<Product>,GenericRepository<Product>>();
-			///webApplicationbuilder.Services.AddScoped<IGenericRepository<ProductBrand>, GenericRepository<ProductBrand>>();
-			///webApplicationbuilder.Services.AddScoped<IGenericRepository<ProductCategory>, GenericRepository<ProductCategory>>();
 
+			webApplicationbuilder.Services.AddDbContext<ApplicationIdentityDbContext>(options =>
+			{
+				options.UseSqlServer(webApplicationbuilder.Configuration.GetConnectionString("IdentityConnection"));
+			});
 			//ApplicationServicesExtension.AddApplicationServices(webApplicationbuilder.Services);
 			webApplicationbuilder.Services.AddApplicationServices();
 
@@ -50,33 +64,47 @@ namespace Talabat.APIs
 				return ConnectionMultiplexer.Connect(connection);
 			});
 
+			webApplicationbuilder.Services.AddIdentity<ApplicationUser, IdentityRole>()
+				.AddEntityFrameworkStores<ApplicationIdentityDbContext>();
 
+			webApplicationbuilder.Services.AddScoped(typeof(IAuthService), typeof(AuthService));
+
+			webApplicationbuilder.Services.AddAuthServices(webApplicationbuilder.Configuration);
+
+			
 			#endregion
 
 			var app = webApplicationbuilder.Build();
 
+			#region Updata Database and DataSeeding
 			using var Scope = app.Services.CreateScope();
-			 var Services=Scope.ServiceProvider;
-			var _dbContext=Services.GetRequiredService<StoreContext>();
+			var Services = Scope.ServiceProvider;
+			var _dbContext = Services.GetRequiredService<StoreContext>();
+			var _identitydbContext = Services.GetRequiredService<ApplicationIdentityDbContext>();
 			//Ask CLR for creating object from DbContext Explicitly
 
 			//Ask CLR  for creating object to log if there is a problem in updating
-			var loggerFactory=Services.GetRequiredService<ILoggerFactory>();
+			var loggerFactory = Services.GetRequiredService<ILoggerFactory>();
 			var logger = loggerFactory.CreateLogger<Program>();
 
 			try
 			{
 				await _dbContext.Database.MigrateAsync(); //Update-Database
-
 				await StoreContextSeed.SeedAsync(_dbContext);
+
+				await _identitydbContext.Database.MigrateAsync();//Update-Database
+				var _userManager = Services.GetRequiredService<UserManager<ApplicationUser>>();
+				await ApplicationIdentityDataSeed.SeedUserAsync(_userManager);
+
 			}
-			catch (Exception ex) 
+			catch (Exception ex)
 			{
-                Console.WriteLine(ex);
+				Console.WriteLine(ex);
 
 				logger.LogError(ex, "An Error Has been occured while applying Migration");
 
-            }
+			} 
+			#endregion
 
 
 			#region Configure Kestrel MiddleWares
@@ -108,7 +136,7 @@ namespace Talabat.APIs
 						: new ApiExceptionResponse((int)HttpStatusCode.InternalServerError);
 
 					var options = new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
-					var json = JsonSerializer.Serialize(response, options);
+					var json = System.Text.Json.JsonSerializer.Serialize(response, options);
 
 					await httpcontext.Response.WriteAsync(json);
 
