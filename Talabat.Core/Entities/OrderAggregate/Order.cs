@@ -9,6 +9,18 @@ namespace Talabat.Core.Entities.OrderAggregate
 {
 	public class Order:BaseEntity
 	{
+        private Order()
+        {
+            
+        }
+        public Order(string buyerEmail,Address shippingAddress,int? deliveryMethodId,ICollection<OrderItem> orderItems,decimal subTotal )
+        {
+            BuyerEmail = buyerEmail;
+            ShippingAddress = shippingAddress;
+            DeliveryMethodId = deliveryMethodId;
+            OrderItems = orderItems;
+            SubTotal = subTotal;
+        }
         public string BuyerEmail { get; set; }
 
         public DateTimeOffset OrderDate { get; set; } = DateTimeOffset.UtcNow;
@@ -17,10 +29,10 @@ namespace Talabat.Core.Entities.OrderAggregate
 
         public Address ShippingAddress { get; set; } = null!;
 
-        //public int DeliveryMethodId { get; set; }//Foreign Key
+        public int? DeliveryMethodId { get; set; }//Foreign Key
 
         public DeliveryMethod? DeliveryMethod { get; set; } //Navigational property One
-
+        
         public ICollection<OrderItem> OrderItems { get; set; }=new HashSet<OrderItem>();
 
         public decimal SubTotal { get; set; }
