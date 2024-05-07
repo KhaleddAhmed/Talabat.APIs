@@ -15,7 +15,7 @@ namespace Talabat.Core.Entities.OrderAggregate
 
         public OrderStatus Status { get; set; } = OrderStatus.Pending;
 
-        public Address Address { get; set; } = null!;
+        public Address ShippingAddress { get; set; } = null!;
 
         //public int DeliveryMethodId { get; set; }//Foreign Key
 
