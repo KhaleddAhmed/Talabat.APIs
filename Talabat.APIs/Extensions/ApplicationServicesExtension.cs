@@ -11,6 +11,7 @@ using Talabat.Core.Services.Contract;
 using Talabat.Infrastructure;
 using Talabat.Infrastructure.BasketRepository;
 using Talabat.Infrastructure.GenericRepository;
+using Talabat.Service;
 using Talabat.Service.OrderService;
 
 namespace Talabat.APIs.Extensions
@@ -47,6 +48,8 @@ namespace Talabat.APIs.Extensions
 			Services.AddScoped(typeof(IUnitOfWork), typeof(UnitOfWork));
 
 			Services.AddScoped(typeof(IOrderService), typeof(OrderService));
+
+			Services.AddScoped(typeof(IProductService),typeof(ProductService));
 
 			return Services;
 
