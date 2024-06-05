@@ -7,6 +7,7 @@ using Talabat.APIs.Errors;
 using Talabat.APIs.Helpers;
 using Talabat.Core.Entities;
 using Talabat.Core.Repositories.Contract;
+using Talabat.Core.Services.Contract;
 using Talabat.Core.Specifications;
 using Talabat.Core.Specifications.ProductSpecifications;
 
@@ -15,17 +16,21 @@ namespace Talabat.APIs.Controllers
 
 	public class ProductsController : BaseApiController
 	{
-		private readonly IGenericRepository<Product> _productRepo;
+		
 		private readonly IMapper _mapper;
-		private readonly IGenericRepository<ProductBrand> _brandRepo;
-		private readonly IGenericRepository<ProductCategory> _categoryRepo;
+		private readonly IProductService _productService;
+		///private readonly IGenericRepository<Product> _productRepo;
+		///private readonly IGenericRepository<ProductBrand> _brandRepo;
+		///private readonly IGenericRepository<ProductCategory> _categoryRepo;
 
-		public ProductsController(IGenericRepository<Product> productRepo,IMapper mapper,IGenericRepository<ProductBrand> brandRepo,IGenericRepository<ProductCategory> categoryRepo)
+		public ProductsController(/*IGenericRepository<Product> productRepo*/IMapper mapper/*,IGenericRepository<ProductBrand> brandRepo,IGenericRepository<ProductCategory> categoryRepo*/,IProductService productService)
         {
-			_productRepo = productRepo;
+			
 			_mapper = mapper;
-		    _brandRepo = brandRepo;
-			_categoryRepo = categoryRepo;
+			_productService = productService;
+			///_productRepo = productRepo;
+			///_brandRepo = brandRepo;
+			///_categoryRepo = categoryRepo;
 		}
 
 		// /api/Products
@@ -33,12 +38,12 @@ namespace Talabat.APIs.Controllers
 		[HttpGet]
 		public async Task<ActionResult<Pagination <ProductToReturnDto>>> GetProducts([FromQuery] ProductSpecParams specParams)
 		{
-			var spec = new ProductWithBrandAndCategorySpecifications(specParams);
-			var products = await _productRepo.GetAllWithSpec(spec);
+			
+			var products = await _productService.GetProductsAsync(specParams);
 
 			var data=_mapper.Map<IReadOnlyList<Product>,IReadOnlyList<ProductToReturnDto>>(products);
-			var countSpec = new ProductsWithFilterationForCount(specParams);
-			var count=await _productRepo.GetCountAsync(countSpec);
+			
+			var count=await _productService.GetCountAsync(specParams);
 
 			return Ok(new Pagination<ProductToReturnDto>(specParams.PageIndex,specParams.PageSize,data, count));
 		}
@@ -49,8 +54,8 @@ namespace Talabat.APIs.Controllers
 		[HttpGet("{id}")]
 		public async Task<ActionResult<ProductToReturnDto>> GetProduct(int id)
 		{
-			var spec=new ProductWithBrandAndCategorySpecifications(id);
-			var product = await _productRepo.GetWithSpec(spec);
+			
+			var product =await _productService.GetProductAsync(id);
 			if(product is null)
 			   return NotFound(new ApiResponse(404));//404
 
@@ -61,7 +66,7 @@ namespace Talabat.APIs.Controllers
 		[HttpGet("brands")]
 		public async Task<ActionResult<IReadOnlyList<ProductBrand>>> GetBrands()
 		{
-			var brands=await _brandRepo.GetAllAsync();
+			var brands=await _productService.GetBrandsAsync();
 			return Ok(brands);
 		}
 
@@ -69,7 +74,7 @@ namespace Talabat.APIs.Controllers
 		[HttpGet("categories")]
 		public async Task<ActionResult<IReadOnlyList<ProductCategory>>> GetCategories()
 		{
-			var categories=await _categoryRepo.GetAllAsync();
+			var categories=await _productService.GetCategoriesAsync();
 			return Ok(categories);
 		}
 
