@@ -16,14 +16,17 @@ namespace Talabat.Service.OrderService
 	{
 		private readonly IBasketRepository _basketRepository;
 		private readonly IUnitOfWork _unitOfWork;
+		private readonly IPaymentService paymentService;
+
 		///private readonly IGenericRepository<Product> _productRepo;
 		///private readonly IGenericRepository<DeliveryMethod> _deliveryRepo;
 		///private readonly IGenericRepository<Order> _orderRepo;
 
-		public OrderService(IBasketRepository  basketRepository,/*IGenericRepository<Product> productRepo,IGenericRepository<DeliveryMethod> deliveryRepo,IGenericRepository<Order> orderRepo*/IUnitOfWork unitOfWork)
+		public OrderService(IBasketRepository  basketRepository,/*IGenericRepository<Product> productRepo,IGenericRepository<DeliveryMethod> deliveryRepo,IGenericRepository<Order> orderRepo*/IUnitOfWork unitOfWork,IPaymentService paymentService)
         {
 			_basketRepository = basketRepository;
 			_unitOfWork = unitOfWork;
+			this.paymentService = paymentService;
 			///_productRepo = productRepo;
 			///_deliveryRepo = deliveryRepo;
 			///_orderRepo = orderRepo;
@@ -51,10 +54,19 @@ namespace Talabat.Service.OrderService
 
 			//4.get deliveryMethod
 			var deliveryMethod = await _unitOfWork.Repository<DeliveryMethod>().GetAsync(deliveryMethodId);
+			var spec = new OrderWithPaymentIntentSpecification(basket.PaymentIntentID);
+			var existingOrder = await _unitOfWork.Repository<Order>().GetWithSpec(spec);
+
+			if(existingOrder is not null)
+			{
+				_unitOfWork.Repository<Order>().Delete(existingOrder);
+
+
+			}
 
 			//5.Create Order
 
-			var order=new Order(buyerEmail,shippingAddress,deliveryMethodId,orderItems,subTotal);
+			var order=new Order(buyerEmail,shippingAddress,deliveryMethodId,orderItems,subTotal,basket?.PaymentIntentID??"");
 
 			
 			 _unitOfWork.Repository<Order>().Add(order);
