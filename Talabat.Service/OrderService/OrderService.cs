@@ -14,92 +14,89 @@ namespace Talabat.Service.OrderService
 {
 	public class OrderService : IOrderService
 	{
-		private readonly IBasketRepository _basketRepository;
+		private readonly IBasketRepository _basketRepo;
 		private readonly IUnitOfWork _unitOfWork;
-		private readonly IPaymentService paymentService;
+		private readonly IPaymentService _paymentService;
 
-		///private readonly IGenericRepository<Product> _productRepo;
-		///private readonly IGenericRepository<DeliveryMethod> _deliveryRepo;
-		///private readonly IGenericRepository<Order> _orderRepo;
+		//private readonly IGenericRepository<Product> _productRepo;
+		//private readonly IGenericRepository<DeliveryMethod> _deliveryMethodRepo;
+		//private readonly IGenericRepository<Order> _orderRepo;
 
-		public OrderService(IBasketRepository  basketRepository,/*IGenericRepository<Product> productRepo,IGenericRepository<DeliveryMethod> deliveryRepo,IGenericRepository<Order> orderRepo*/IUnitOfWork unitOfWork,IPaymentService paymentService)
-        {
-			_basketRepository = basketRepository;
-			_unitOfWork = unitOfWork;
-			this.paymentService = paymentService;
-			///_productRepo = productRepo;
-			///_deliveryRepo = deliveryRepo;
-			///_orderRepo = orderRepo;
-		}
-        public async Task<Order?> CreateOrderAsync(string buyerEmail, int deliveryMethodId, string basketId, Address shippingAddress)
+		public OrderService(IBasketRepository basketRepo,
+							//IGenericRepository<Product> productRepo , 
+							//IGenericRepository<DeliveryMethod> deliveryMethodRepo ,
+							//IGenericRepository<Order> orderRepo
+							IUnitOfWork unitOfWork
+							, IPaymentService paymentService)
 		{
-			//1.Get Basket from Basket Repo
-			var basket = await _basketRepository.GetBasketAsync(basketId);
-
-			//2.Get selected Items at basket from Product Repo
-			var orderItems=new List<OrderItem>();
-			if(basket?.Items?.Count > 0) 
+			_basketRepo = basketRepo;
+			_unitOfWork = unitOfWork;
+			_paymentService = paymentService;
+			//_productRepo = productRepo;
+			//_deliveryMethodRepo = deliveryMethodRepo;
+			//_orderRepo = orderRepo;
+		}
+		public async Task<Order?> CreateOrder(string buyerEmail, string basketId, int deliveryMethodId, Address shippingAddress)
+		{
+			var basket = await _basketRepo.GetBasketAsync(basketId);
+			var orderItems = new List<OrderItem>();
+			if (basket?.Items?.Count > 0)
 			{
-				foreach(var item in basket.Items)
+				var productRepository = _unitOfWork.Repository<Product>();
+				foreach (var item in basket.Items)
 				{
-					var product = await _unitOfWork.Repository<Product>().GetAsync(item.Id);
+					var product = await productRepository.GetAsync(item.Id);
 					var productItemOrdered = new ProductItemOrdered(product.Id, product.Name, product.PictureUrl);
 					var orderItem = new OrderItem(productItemOrdered, product.Price, item.Quantity);
 					orderItems.Add(orderItem);
 				}
 			}
-
-			//3.calculate subTotal
-			var subTotal=orderItems.Sum(I=> I.Price * I.Quantity);
-
-			//4.get deliveryMethod
+			var subtotal = orderItems.Sum(item => item.Price * item.Quantity);
 			var deliveryMethod = await _unitOfWork.Repository<DeliveryMethod>().GetAsync(deliveryMethodId);
-			var spec = new OrderWithPaymentIntentSpecification(basket.PaymentIntentID);
-			var existingOrder = await _unitOfWork.Repository<Order>().GetWithSpec(spec);
-
-			if(existingOrder is not null)
+			var orderRepo = _unitOfWork.Repository<Order>();
+			var spec = new OrderWithPaymentIntentSpecification(basket?.PaymentIntentID);
+			var exisitngOrder = await orderRepo.GetWithSpec(spec);
+			if (exisitngOrder is not null)
 			{
-				_unitOfWork.Repository<Order>().Delete(existingOrder);
-
-
+				orderRepo.Delete(exisitngOrder);
+				await _paymentService.CreateOrUpdatePaymentIntent(basketId);
 			}
 
-			//5.Create Order
-
-			var order=new Order(buyerEmail,shippingAddress,deliveryMethodId,orderItems,subTotal,basket?.PaymentIntentID??"");
-
-			
-			 _unitOfWork.Repository<Order>().Add(order);
-			//6-save to database [TODO]
-			var result=await  _unitOfWork.CompleteAsync() ;
+			var order = new Order(
+				buyerEmail: buyerEmail,
+				shippingAddress: shippingAddress,
+				deliveryMethod: deliveryMethod,
+				items: orderItems,
+				subtotal: subtotal,
+				paymentIntentId: basket?.PaymentIntentID ?? ""
+				);
+			orderRepo.Add(order);
+			var result = await _unitOfWork.CompleteAsync();
 			if (result <= 0)
+			{
 				return null;
-
+			}
 			return order;
-
 		}
 
-		public async Task<IReadOnlyList<DeliveryMethod>> GetDeliveryMethodsForUserAsync()
+
+		public async Task<IReadOnlyList<DeliveryMethod>> GetDeliveryMethodsAsync()
 		=> await _unitOfWork.Repository<DeliveryMethod>().GetAllAsync();
-
-		public async Task<Order?> GetOrderByIdForUserAsync(string buyerEmail, int orderId)
+		public Task<Order?> GetOrderByIdForUserAsync(string buyerEmail, int orderId)
 		{
-			var orderRepo=_unitOfWork.Repository<Order>();
-			var orderSpecification = new OrderSpecifications(orderId, buyerEmail);
-			var order = await orderRepo.GetWithSpec(orderSpecification);
-
-			
+			var orderRepo = _unitOfWork.Repository<Order>();
+			var orderSpec = new OrderSpecifications(orderId, buyerEmail);
+			var order = orderRepo.GetWithSpec(orderSpec);
 			return order;
 		}
 
-		public async Task<IReadOnlyList<Order>> GetOrdersFouUserAsync(string buyerEmail)
+
+		public async Task<IReadOnlyList<Order>> GetOrdersForUserAsync(string buyerEmail)
 		{
-			var orderRepo=_unitOfWork.Repository<Order>();
+			var orderRepo = _unitOfWork.Repository<Order>();
 			var spec = new OrderSpecifications(buyerEmail);
-			var orders=await orderRepo.GetAllWithSpec(spec);
-
+			var orders = await orderRepo.GetAllWithSpec(spec);
 			return orders;
-
 		}
 	}
 }

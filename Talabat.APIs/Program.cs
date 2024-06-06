@@ -32,134 +32,104 @@ namespace Talabat.APIs
 		public static async Task Main(string[] args)
 		{
 
-			var webApplicationbuilder = WebApplication.CreateBuilder(args);
+			var webApplicationBuilder = WebApplication.CreateBuilder(args);
 
-			#region Configure Services
-			// Add services to DI the container.
+			#region Configure services
+			// Add services to the dependency injection container.
 
-			webApplicationbuilder.Services.AddControllers().AddNewtonsoftJson(options=>
+			//Register required web API's services to the dependency injection container.
+			webApplicationBuilder.Services.AddControllers().AddNewtonsoftJson(options =>
 			{
-               options.SerializerSettings.ReferenceLoopHandling=ReferenceLoopHandling.Ignore;
+				options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore;
 			});
+
 			// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+			webApplicationBuilder.Services.AddSwaggerServices();
 
-			webApplicationbuilder.Services.AddSwaggerServices();
-
-			webApplicationbuilder.Services.AddDbContext<StoreContext>(options =>
+			webApplicationBuilder.Services.AddDbContext<StoreContext>(options =>
 			{
-				options.UseSqlServer(webApplicationbuilder.Configuration.GetConnectionString("DefaultConnection"));
-
+				options.UseSqlServer(webApplicationBuilder.Configuration.GetConnectionString("DefaultConnection"));
+			}
+			);
+			webApplicationBuilder.Services.AddDbContext<ApplicationIdentityDbContext>(options =>
+			{
+				options.UseSqlServer(webApplicationBuilder.Configuration.GetConnectionString("IdentityConnection"));
 			});
-
-			webApplicationbuilder.Services.AddDbContext<ApplicationIdentityDbContext>(options =>
+			webApplicationBuilder.Services.AddSingleton<IConnectionMultiplexer>((serviceProvider) =>
 			{
-				options.UseSqlServer(webApplicationbuilder.Configuration.GetConnectionString("IdentityConnection"));
-			});
-			//ApplicationServicesExtension.AddApplicationServices(webApplicationbuilder.Services);
-			webApplicationbuilder.Services.AddApplicationServices();
-
-			webApplicationbuilder.Services.AddSingleton<IConnectionMultiplexer>((serviceProvidee) =>
-			{
-				var connection = webApplicationbuilder.Configuration.GetConnectionString("Redis");
+				var connection = webApplicationBuilder.Configuration.GetConnectionString("Redis");
 				return ConnectionMultiplexer.Connect(connection);
-			});
-
-			webApplicationbuilder.Services.AddIdentity<ApplicationUser, IdentityRole>()
-				.AddEntityFrameworkStores<ApplicationIdentityDbContext>();
-
-			webApplicationbuilder.Services.AddScoped(typeof(IAuthService), typeof(AuthService));
-
-			webApplicationbuilder.Services.AddAuthServices(webApplicationbuilder.Configuration);
-
-			
+			}
+			);
+			webApplicationBuilder.Services.AddAuthServices(webApplicationBuilder.Configuration);
+			webApplicationBuilder.Services.AddApplicationsService();
+			webApplicationBuilder.Services.AddCors(options =>
+			{
+				options.AddPolicy("MyPolicy", policyOptioons =>
+				{
+					policyOptioons.AllowAnyHeader().AllowAnyMethod().WithOrigins(webApplicationBuilder.Configuration["FrontBaseUrl"]);
+				});
+			}
+				);
 			#endregion
 
-			var app = webApplicationbuilder.Build();
 
-			#region Updata Database and DataSeeding
-			using var Scope = app.Services.CreateScope();
-			var Services = Scope.ServiceProvider;
-			var _dbContext = Services.GetRequiredService<StoreContext>();
-			var _identitydbContext = Services.GetRequiredService<ApplicationIdentityDbContext>();
-			//Ask CLR for creating object from DbContext Explicitly
-
-			//Ask CLR  for creating object to log if there is a problem in updating
-			var loggerFactory = Services.GetRequiredService<ILoggerFactory>();
+			var app = webApplicationBuilder.Build();
+			//Ask CLR for creating object from DBContext explicitly
+			using var scope = app.Services.CreateScope();
+			var services = scope.ServiceProvider;
+			var _dbContext = services.GetRequiredService<StoreContext>();
+			var _IdentityDbContext = services.GetRequiredService<ApplicationIdentityDbContext>();
+			var loggerFactory = services.GetRequiredService<ILoggerFactory>();
 			var logger = loggerFactory.CreateLogger<Program>();
-
 			try
 			{
-				await _dbContext.Database.MigrateAsync(); //Update-Database
+				await _dbContext.Database.MigrateAsync(); //update database
 				await StoreContextSeed.SeedAsync(_dbContext);
 
-				await _identitydbContext.Database.MigrateAsync();//Update-Database
-				var _userManager = Services.GetRequiredService<UserManager<ApplicationUser>>();
-				await ApplicationIdentityDataSeed.SeedUserAsync(_userManager);
-
+				await _IdentityDbContext.Database.MigrateAsync(); //update database
+				var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+				await ApplicationIdentityDataSeed.SeedUserAsync(userManager);
 			}
 			catch (Exception ex)
 			{
-				Console.WriteLine(ex);
+				logger.LogError(ex, "An error has been occured during applying the migration");
+			}
 
-				logger.LogError(ex, "An Error Has been occured while applying Migration");
-
-			} 
-			#endregion
-
-
-			#region Configure Kestrel MiddleWares
-
-
-			// Configure the HTTP request pipeline.
+			#region Configure kestrel middleware
 			//app.UseMiddleware<ExceptionMiddleware>();
 
-			app.Use(async (httpcontext, _next) =>
+			app.Use(async (httpContext, _next) =>
 			{
 				try
 				{
-					//take an action with request
-					await _next.Invoke(httpcontext); //Go To Next Middleware
-
-					//take action with response
+					//take an action with the request
+					await _next.Invoke(httpContext); // go to next middleware
+													 //take an action with the response
 				}
 				catch (Exception ex)
 				{
-
-					logger.LogError(ex.Message); //Development
-
-					//log exception In Database or file in production Env
-
-					httpcontext.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
-					httpcontext.Response.ContentType = "application/json";
-
-					var response = app.Environment.IsDevelopment() ? new ApiExceptionResponse((int)HttpStatusCode.InternalServerError, ex.Message, ex.StackTrace.ToString())
-						: new ApiExceptionResponse((int)HttpStatusCode.InternalServerError);
-
+					logger.LogError(ex.Message); // development environment
+					httpContext.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+					httpContext.Response.ContentType = "application/json";
+					var response = app.Environment.IsDevelopment() ? new ApiExceptionResponse((int)HttpStatusCode.InternalServerError, ex.Message, ex.StackTrace.ToString()) :
+					new ApiExceptionResponse((int)HttpStatusCode.InternalServerError);
 					var options = new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 					var json = System.Text.Json.JsonSerializer.Serialize(response, options);
-
-					await httpcontext.Response.WriteAsync(json);
-
+					await httpContext.Response.WriteAsync(json);
 				}
 			});
+			// Configure the HTTP request pipeline.
 			if (app.Environment.IsDevelopment())
 			{
 				app.UseSwaggerMiddlewares();
-
 			}
-
-			app.UseStatusCodePagesWithReExecute("/Errors/{0}");
-
+			app.UseStatusCodePagesWithReExecute("/errors/{0}");
 			app.UseHttpsRedirection();
-
-
 			app.UseStaticFiles();
-
-			app.MapControllers(); 
+			app.UseCors("MyPolicy");
+			app.MapControllers();
 			#endregion
-
-
-
 
 			app.Run();
 		}

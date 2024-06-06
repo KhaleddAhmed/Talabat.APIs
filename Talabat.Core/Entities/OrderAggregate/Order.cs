@@ -13,16 +13,16 @@ namespace Talabat.Core.Entities.OrderAggregate
         {
             
         }
-        public Order(string buyerEmail,Address shippingAddress,int? deliveryMethodId,ICollection<OrderItem> orderItems,decimal subTotal,string paymentIntentId )
-        {
-            BuyerEmail = buyerEmail;
-            ShippingAddress = shippingAddress;
-            DeliveryMethodId = deliveryMethodId;
-            OrderItems = orderItems;
-            SubTotal = subTotal;
-            PaytmentIntent = paymentIntentId;
-        }
-        public string BuyerEmail { get; set; }
+		public Order(string buyerEmail, Address shippingAddress, DeliveryMethod deliveryMethod, ICollection<OrderItem> items, decimal subtotal, string paymentIntentId)
+		{
+			BuyerEmail = buyerEmail;
+			ShippingAddress = shippingAddress;
+			DeliveryMethod = deliveryMethod;
+			OrderItems = items;
+			SubTotal = subtotal;
+			PaytmentIntent = paymentIntentId;
+		}
+		public string BuyerEmail { get; set; }
 
         public DateTimeOffset OrderDate { get; set; } = DateTimeOffset.UtcNow;
 
