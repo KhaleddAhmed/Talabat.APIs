@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 using Talabat.APIs.DTOs;
 using Talabat.APIs.Errors;
 using Talabat.Core.Entities.OrderAggregate;
@@ -29,8 +30,9 @@ namespace Talabat.APIs.Controllers
 
 		public async Task<ActionResult<OrderToReturnDto>> CreateOrder(OrderDto orderDto)
 		{
+			var buyerEmail=User.FindFirstValue(ClaimTypes.Email);
 			var address = _mapper.Map<AddressDto,Address>(orderDto.ShippingAddress);
-			var order=await _orderService.CreateOrderAsync(orderDto.BuyerEmail, orderDto.DeliveryMethodId, orderDto.BasketId, address);
+			var order=await _orderService.CreateOrderAsync(buyerEmail, orderDto.DeliveryMethodId, orderDto.BasketId, address);
 
 			if (order is null)
 				return BadRequest(new ApiResponse(400));
